@@ -19,19 +19,29 @@ class Settings(BaseSettings):
     """
 
     # Application
-    APP_NAME: str = "FastAPI MVC Application"
+    APP_NAME: str = "PDF Extract API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     SECRET_KEY: str = "dev-secret-key-change-in-production"
+    ENVIRONMENT: str = "development"
 
-    # Database
-    DATABASE_URL: str = "sqlite:///./app.db"
+    # MongoDB Configuration
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_DB_NAME: str = "pdf_extract_db"
+    MONGODB_MAX_CONNECTIONS: int = 10
+    MONGODB_MIN_CONNECTIONS: int = 1
+    MONGODB_MAX_IDLE_TIME_MS: int = 60000
+    MONGODB_WAIT_QUEUE_TIMEOUT_MS: int = 5000
 
     # CORS
     ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
 
     # Logging
     LOG_LEVEL: str = "INFO"
+
+    # File Upload
+    MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024  # 50MB
+    ALLOWED_EXTENSIONS: List[str] = [".pdf"]
 
     class Config:
         """Pydantic config."""
