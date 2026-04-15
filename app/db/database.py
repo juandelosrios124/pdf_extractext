@@ -67,14 +67,7 @@ class MongoDatabase(DatabaseInterface):
             logger.info(f"Connecting to MongoDB at {settings.MONGODB_URL}")
 
             # Configure MongoDB client with connection pooling
-            self._client = AsyncIOMotorClient(
-                settings.MONGODB_URL,
-                maxPoolSize=settings.MONGODB_MAX_CONNECTIONS,
-                minPoolSize=settings.MONGODB_MIN_CONNECTIONS,
-                maxIdleTimeMS=settings.MONGODB_MAX_IDLE_TIME_MS,
-                waitQueueTimeoutMS=settings.MONGODB_WAIT_QUEUE_TIMEOUT_MS,
-                serverSelectionTimeoutMS=5000,
-            )
+            self._client = AsyncIOMotorClient(settings.MONGODB_URL)
 
             # Verify connection
             await self._client.admin.command("ping")
