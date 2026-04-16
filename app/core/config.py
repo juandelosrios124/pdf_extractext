@@ -28,5 +28,8 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # CORS
+    ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+
 
 settings = Settings()
