@@ -104,8 +104,8 @@ tests/
 
 ### Prerequisites
 
-- Python 3.9+
-- pip or uv package manager
+- Python 3.11+
+- uv package manager
 
 ### Installation
 
@@ -114,16 +114,9 @@ tests/
 # Using uv
 uv venv
 
-# Using venv
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# or
-venv\Scripts\activate     # Windows
-```
-
 2. **Install dependencies:**
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 3. **Configure environment:**
@@ -135,10 +128,10 @@ cp .env.example .env
 4. **Run the application:**
 ```bash
 # Development
-uvicorn app.main:app --reload
+uvicorn main:app --reload
 
 # Production
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ## API Documentation
