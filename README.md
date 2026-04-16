@@ -268,3 +268,182 @@ prompt :
 
 - Quiero que me crees una estructura de tres capas, para una aplicación modelo vista controlador, Para ser desarrollada con el framework FastAPI, usando los principios de clean code
 >>>>>>> a46ec1e574c3e87b0bf9a251ffa0af16ae7a59ca
+
+## MongoDB Migrations
+
+This project includes a professional migration system for MongoDB.
+
+### Migration System Features
+
+- ✅ Pure async functions as migration units
+- ✅ Automatic tracking in MongoDB (`_migration_log` collection)
+- ✅ Checksum validation for integrity
+- ✅ Distributed locking to prevent concurrent runs
+- ✅ Full rollback support (`up` and `down` functions)
+- ✅ Dry-run mode for safe testing
+- ✅ Migration verification
+
+### Project Structure
+
+```
+migrations/
+├── __init__.py          # Package initialization
+├── __main__.py          # CLI entry point
+├── cli.py               # Command-line interface
+├── runner.py            # Migration execution engine
+├── registry.py          # Migration tracking
+├── config.py            # Configuration
+├── exceptions.py        # Custom exceptions
+├── logger.py            # Logging utilities
+└── versions/            # Migration files
+    ├── 001_create_indexes.py
+    ├── 002_add_status_field.py
+    ├── 003_transform_document_fields.py
+    └── 004_add_user_metadata.py
+```
+
+### Available Commands
+
+```bash
+# Show current status
+python -m migrations status
+
+# Execute all pending migrations
+python -m migrations migrate
+
+# Preview migrations without executing
+python -m migrations migrate --dry-run
+
+# Rollback last migration
+python -m migrations rollback
+
+# Rollback specific number of migrations
+python -m migrations rollback --steps 3
+
+# Rollback to specific migration
+python -m migrations rollback --target 001_create_indexes
+
+# Create new migration
+python -m migrations create "add new field"
+
+# Verify migration integrity
+python -m migrations verify
+```
+
+### Creating a New Migration
+
+```bash
+python -m migrations create "add user preferences"
+```
+
+This creates a file like `migrations/versions/20240115_143000_add_user_preferences.py`:
+
+```python
+"""
+Add user preferences
+
+Created: 2024-01-15T14:30:00
+"""
+
+migration_id = "20240115_143000_add_user_preferences"
+description = "Add user preferences"
+created_at = "2024-01-15T14:30:00"
+author = "developer"
+
+
+async def up(db):
+    """
+    Apply the migration.
+
+    Args:
+        db: AsyncIOMotorDatabase instance
+    """
+    await db.documents.update_many(
+        {"preferences": {"$exists": False}},
+        {"$set": {"preferences": {}}}
+    )
+
+
+async def down(db):
+    """
+    Revert the migration.
+
+    Args:
+        db: AsyncIOMotorDatabase instance
+    """
+    await db.documents.update_many(
+        {},
+        {"$unset": {"preferences": ""}}
+    )
+```
+
+### Migration Examples
+
+#### 1. Create Indexes
+
+```python
+async def up(db):
+    await db.documents.create_index("user_id", background=True)
+
+async def down(db):
+    await db.documents.drop_index("user_id_1")
+```
+
+#### 2. Add Field with Default Value
+
+```python
+from datetime import datetime, timezone
+
+async def up(db):
+    await db.documents.update_many(
+        {"status": {"$exists": False}},
+        {"$set": {"status": "pending"}}
+    )
+
+async def down(db):
+    await db.documents.update_many(
+        {},
+        {"$unset": {"status": ""}}
+    )
+```
+
+#### 3. Transform Data Format
+
+```python
+async def up(db):
+    async for doc in db.documents.find({"metadata": {"$type": "string"}}):
+        await db.documents.update_one(
+            {"_id": doc["_id"]},
+            {"$set": {"metadata": {"value": doc["metadata"]}}}}
+        )
+
+async def down(db):
+    async for doc in db.documents.find({"metadata.value": {"$exists": True}}):
+        await db.documents.update_one(
+            {"_id": doc["_id"]},
+            {"$set": {"metadata": doc["metadata"]["value"]}}
+        )
+```
+
+### Best Practices
+
+1. **Always provide down()**: Makes migrations reversible
+2. **Use transactions**: For critical data changes
+3. **Test in staging**: Run migrations in non-production first
+4. **Use --dry-run**: Preview changes before applying
+5. **Keep migrations small**: Easier to debug and rollback
+6. **Add indexes after data**: Create indexes after data migration
+7. **Document changes**: Write clear descriptions
+
+### Environment Variables
+
+```bash
+# Enable automatic backups before migration
+MIGRATION_CREATE_BACKUPS=true
+
+# Backup directory
+MIGRATION_BACKUP_DIR=./migrations/backups
+
+# Dry run mode (simulation only)
+MIGRATION_DRY_RUN=false
+```
