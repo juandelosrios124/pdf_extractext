@@ -153,21 +153,6 @@ class HealthService:
             )
 
     def _determine_overall_status(self, checks: Dict[str, HealthCheckDetail]) -> str:
-        """
-        Determine overall health status from individual checks.
-
-        Logic:
-        - "unhealthy": Critical checks failed (database)
-        - "degraded": Non-critical checks failed (migrations)
-        - "healthy": All checks pass
-
-        Args:
-            checks: Dictionary of check results
-
-        Returns:
-            Overall status string
-        """
-        # Critical checks - if these fail, system is unhealthy
         critical_checks = ["database"]
 
         has_critical_failure = any(
@@ -179,9 +164,16 @@ class HealthService:
         if has_critical_failure:
             return "unhealthy"
 
-        # Non-critical checks - failures result in degraded status
+        # ✅ Solo evaluar checks NO críticos
+        non_critical_checks = {
+            key: check 
+            for key, check in checks.items() 
+            if key not in critical_checks      # ← esta es la corrección
+        }
+
         has_non_critical_failure = any(
-            check.status in ["fail", "warn"] for check in checks.values()
+            check.status in ["fail", "warn"] 
+            for check in non_critical_checks.values()
         )
 
         if has_non_critical_failure:
@@ -203,7 +195,6 @@ class HealthService:
         migrations_detail = await self._check_migrations()
 
         checks = {"database": database_detail, "migrations": migrations_detail}
-
         # Calculate uptime
         uptime_seconds = time.time() - self._start_time
 
