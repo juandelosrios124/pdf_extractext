@@ -1,6 +1,7 @@
 # app/services/pdf_service.py
 
 import fitz  # PyMuPDF
+import hashlib
 
 
 def extract_text_from_bytes(pdf_bytes: bytes) -> str:
@@ -27,3 +28,15 @@ def extract_text_from_bytes(pdf_bytes: bytes) -> str:
 
     doc.close()
     return text
+
+def calculate_checksum(file_bytes: bytes) -> str:
+    """
+    Calcula el checksum SHA-256 de un archivo.
+
+    Args:
+        file_bytes: contenido del archivo en bytes
+
+    Returns:
+        String hexadecimal de 64 caracteres (SHA-256)
+    """
+    return hashlib.sha256(file_bytes).hexdigest()
