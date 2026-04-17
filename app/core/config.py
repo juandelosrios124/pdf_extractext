@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "PDF Extract API"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = False
+    DEBUG: bool = True
     ENVIRONMENT: str = "development"
 
     # MongoDB
