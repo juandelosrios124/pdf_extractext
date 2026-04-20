@@ -1,14 +1,24 @@
-# app/core/config.py
+"""Application configuration.
 
-from typing import List
+Follows 12-Factor App: Configuration via environment variables.
+"""
+
+from typing import List, Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Application settings.
+
+    Loads configuration from environment variables.
+    Follows Single Responsibility Principle.
+    """
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
+        extra="ignore",
     )
 
     # Application
@@ -26,7 +36,9 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: List[str] = [".pdf"]
 
     # Logging
-    LOG_LEVEL: str = "INFO"
+    LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    LOG_FORMAT: Literal["text", "json"] = "text"  # text for dev, json for prod
+    LOG_CORRELATION_ID: bool = True
 
     # CORS
     ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://localhost:8000"]

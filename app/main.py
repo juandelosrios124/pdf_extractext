@@ -1,5 +1,4 @@
-"""
-Application entry point.
+"""Application entry point.
 
 Follows the Single Responsibility Principle by only handling application setup.
 """
@@ -11,16 +10,35 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.core.logging import setup_logging
+from app.core.logging import configure_logging, get_logger
+from app.core.logging.middleware import (
+    CorrelationIdMiddleware,
+    RequestLoggingMiddleware,
+)
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    setup_logging()
+    configure_logging(
+        level=settings.LOG_LEVEL,
+        format_type=settings.LOG_FORMAT,
+        propagate=False,
+    )
+    logger.info(
+        f"Starting {settings.APP_NAME} v{settings.APP_VERSION}",
+        extra={
+            "app_name": settings.APP_NAME,
+            "app_version": settings.APP_VERSION,
+            "environment": settings.ENVIRONMENT,
+        },
+    )
     yield
     # Shutdown
+    logger.info("Application shutting down")
 
 
 def create_application() -> FastAPI:
@@ -35,9 +53,16 @@ def create_application() -> FastAPI:
         version=settings.APP_VERSION,
         debug=settings.DEBUG,
         lifespan=lifespan,
-        docs_url="/api/docs" if settings.DEBUG else None,
-        redoc_url="/api/redoc" if settings.DEBUG else None,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
     )
+
+    # Logging middleware (before CORS to capture all requests)
+    if settings.LOG_CORRELATION_ID:
+        application.add_middleware(CorrelationIdMiddleware)
+    if settings.DEBUG:
+        application.add_middleware(RequestLoggingMiddleware)
 
     # CORS Middleware
     application.add_middleware(
@@ -60,4 +85,5 @@ app = create_application()
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Health check endpoint."""
+    logger.debug("Health check requested")
     return {"status": "healthy", "version": settings.APP_VERSION}

@@ -17,17 +17,17 @@ traditional migrations. Instead, we implement:
 This approach is more idiomatic for NoSQL databases and provides better flexibility.
 """
 
-import logging
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from pymongo.errors import ConnectionFailure, OperationFailure
+from pymongo.errors import ConnectionFailure
 
 from app.core.config import settings
 from app.core.interfaces.database import DatabaseInterface, SessionManagerInterface
+from app.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MongoDatabase(DatabaseInterface):

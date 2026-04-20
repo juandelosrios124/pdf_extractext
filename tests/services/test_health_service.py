@@ -4,12 +4,29 @@ Tests for HealthService.
 Follows the Arrange-Act-Assert pattern.
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.health_service import HealthService
+import pytest
+
 from app.schemas.health import HealthCheckResponse
+from app.services.health_service import HealthService
+
+
+@pytest.fixture(autouse=True)
+def mock_migrations():
+    """Mock migration runner to return no pending migrations for all tests."""
+    with patch("migrations.runner.MigrationRunner") as mock_runner_class:
+        mock_runner = MagicMock()
+        mock_runner.status = AsyncMock(
+            return_value={
+                "pending_count": 0,
+                "applied_count": 10,
+                "total_migrations": 10,
+            }
+        )
+        mock_runner_class.return_value = mock_runner
+        yield
 
 
 class TestHealthService:
