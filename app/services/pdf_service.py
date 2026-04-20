@@ -5,6 +5,7 @@ SRP: Only handles PDF text extraction.
 """
 
 import fitz  # PyMuPDF
+import hashlib
 
 from app.core.logging import get_logger
 
@@ -44,6 +45,7 @@ def extract_text_from_bytes(pdf_bytes: bytes) -> str:
         )
 
     doc.close()
+<<<<<<< HEAD
 
     full_text = "".join(text_parts)
     logger.info(
@@ -55,3 +57,18 @@ def extract_text_from_bytes(pdf_bytes: bytes) -> str:
     )
 
     return full_text
+=======
+    return text
+
+def calculate_checksum(file_bytes: bytes) -> str:
+    """
+    Calcula el checksum SHA-256 de un archivo.
+
+    Args:
+        file_bytes: contenido del archivo en bytes
+
+    Returns:
+        String hexadecimal de 64 caracteres (SHA-256)
+    """
+    return hashlib.sha256(file_bytes).hexdigest()
+>>>>>>> origin/main

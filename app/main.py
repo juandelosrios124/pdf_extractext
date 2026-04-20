@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+<<<<<<< HEAD
 from app.core.logging import configure_logging, get_logger
 from app.core.logging.middleware import (
     CorrelationIdMiddleware,
@@ -17,12 +18,17 @@ from app.core.logging.middleware import (
 )
 
 logger = get_logger(__name__)
+=======
+from app.core.logging import setup_logging
+from app.db.database import db
+
+>>>>>>> origin/main
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events."""
     # Startup
+<<<<<<< HEAD
     configure_logging(
         level=settings.LOG_LEVEL,
         format_type=settings.LOG_FORMAT,
@@ -39,6 +45,13 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     logger.info("Application shutting down")
+=======
+    setup_logging()
+    await db.connect()       # ← conectar MongoDB al arrancar
+    yield
+    # Shutdown
+    await db.disconnect()    # ← desconectar al cerrar
+>>>>>>> origin/main
 
 
 def create_application() -> FastAPI:

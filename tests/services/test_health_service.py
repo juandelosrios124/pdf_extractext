@@ -68,15 +68,26 @@ class TestHealthService:
         assert "database" in result.checks
         assert "migrations" in result.checks
 
+    
     @pytest.mark.asyncio
     async def test_check_health_status_healthy_when_all_pass(
         self, health_service, mock_db
     ):
         """Test that status is healthy when all checks pass."""
-        # Arrange - mock_db already configured in fixture
+        # Arrange - mockeamos migraciones para que retornen "pass"
+        from app.schemas.health import HealthCheckDetail
 
-        # Act
-        result = await health_service.check_health()
+        with patch.object(
+            health_service,
+            "_check_migrations",
+            return_value=HealthCheckDetail(
+                status="pass",
+                response_time_ms=1.0,
+                details={"pending_count": 0, "applied_count": 1, "total_migrations": 1},
+            ),
+        ):
+            # Act
+            result = await health_service.check_health()
 
         # Assert
         assert result.status == "healthy"
