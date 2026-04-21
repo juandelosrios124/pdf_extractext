@@ -9,10 +9,11 @@ class DocumentRepository:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.collection = db["documents"]
 
-    async def save_document(self, filename: str, text: str) -> str:
+    async def save_document(self, filename: str, text: str, checksum: str) -> str:
         document = {
             "filename": filename,
             "text": text,
+            "checksum": checksum,    # ← nuevo campo
         }
         result = await self.collection.insert_one(document)
         return str(result.inserted_id)

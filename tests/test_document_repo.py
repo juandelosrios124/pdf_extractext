@@ -31,16 +31,23 @@ def repo(mock_db):
 async def test_save_document_returns_id(repo):
     doc_id = await repo.save_document(
         filename="archivo.pdf",
-        text="Texto extraído del PDF"
+        text="Texto extraído del PDF",
+        checksum="abc123def456",
     )
     assert isinstance(doc_id, str)
     assert len(doc_id) > 0
 
 
 @pytest.mark.asyncio
-async def test_save_document_calls_insert(repo, mock_db):
-    await repo.save_document(filename="archivo.pdf", text="Texto del PDF")
-    mock_db["documents"].insert_one.assert_called_once()
+async def test_save_document_includes_checksum(repo, mock_db):
+    await repo.save_document(
+        filename="archivo.pdf",
+        text="Texto del PDF",
+        checksum="abc123def456"
+    )
+    call_args = mock_db["documents"].insert_one.call_args[0][0]
+    assert "checksum" in call_args
+    assert call_args["checksum"] == "abc123def456"
 
 
 @pytest.mark.asyncio
