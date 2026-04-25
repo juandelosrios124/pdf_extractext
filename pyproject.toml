@@ -40,8 +40,10 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
-    "integration: tests que requieren servicios externos (MongoDB)",
+    "integration: tests que requieren servicios externos como MongoDB",
 ]
+# ✅ Excluir integration tests del suite general
+addopts = "--ignore=tests/integration/db"
 
 
 [tool.uv]
