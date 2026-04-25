@@ -22,3 +22,4 @@ def test_users_routes_are_registered_in_openapi() -> None:
     assert response.status_code == 200
     paths = response.json().get("paths", {})
     assert any(path.startswith("/api/v1/users") for path in paths)
+    assert any(path.startswith("/api/v1/auth") for path in paths)

@@ -8,13 +8,9 @@ Follows the Single Responsibility Principle.
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.exceptions import (
-    ApplicationException,
-    ConflictException,
-    NotFoundException,
-)
+from app.core.exceptions import ConflictException, NotFoundException
 from app.db.database import get_db_session
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.services.user_service import user_service
@@ -30,7 +26,7 @@ router = APIRouter()
     description="Create a new user account",
 )
 async def create_user(
-    user_data: UserCreate, session: AsyncSession = Depends(get_db_session)
+    user_data: UserCreate, session: AsyncIOMotorDatabase = Depends(get_db_session)
 ) -> UserResponse:
     """
     Create a new user.
@@ -55,7 +51,9 @@ async def create_user(
     description="Get a list of all users with pagination",
 )
 async def list_users(
-    skip: int = 0, limit: int = 100, session: AsyncSession = Depends(get_db_session)
+    skip: int = 0,
+    limit: int = 100,
+    session: AsyncIOMotorDatabase = Depends(get_db_session),
 ) -> List[UserResponse]:
     """
     List all users.
@@ -78,7 +76,7 @@ async def list_users(
     description="Get a specific user by their ID",
 )
 async def get_user(
-    user_id: int, session: AsyncSession = Depends(get_db_session)
+    user_id: str, session: AsyncIOMotorDatabase = Depends(get_db_session)
 ) -> UserResponse:
     """
     Get user by ID.
@@ -106,7 +104,9 @@ async def get_user(
     description="Update an existing user",
 )
 async def update_user(
-    user_id: int, user_data: UserUpdate, session: AsyncSession = Depends(get_db_session)
+    user_id: str,
+    user_data: UserUpdate,
+    session: AsyncIOMotorDatabase = Depends(get_db_session),
 ) -> UserResponse:
     """
     Update user.
@@ -134,7 +134,7 @@ async def update_user(
     description="Delete a user account",
 )
 async def delete_user(
-    user_id: int, session: AsyncSession = Depends(get_db_session)
+    user_id: str, session: AsyncIOMotorDatabase = Depends(get_db_session)
 ) -> None:
     """
     Delete user.

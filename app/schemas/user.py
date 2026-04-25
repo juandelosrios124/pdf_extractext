@@ -60,7 +60,7 @@ class UserResponse(UserBase):
     Excludes sensitive information like password.
     """
 
-    id: int
+    id: str
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -76,7 +76,7 @@ class UserInDB(UserBase):
     Used internally, not exposed to clients.
     """
 
-    id: int
+    id: str
     hashed_password: str
     is_active: bool
     is_superuser: bool
