@@ -1,8 +1,11 @@
+import os
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from bson import ObjectId
+
+os.environ["DEBUG"] = "true"
 
 from app.core.exceptions import ConflictException, NotFoundException
 from app.schemas.user import UserCreate, UserUpdate

@@ -6,14 +6,14 @@ Follows the Single Responsibility Principle.
 """
 
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List
 
-from bson import ObjectId
-from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.models.user import UserCreateDocument, UserDocument, UserUpdateDocument
 from app.core.security import hash_password
 from app.core.exceptions import ConflictException, NotFoundException
+from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 
 
@@ -26,50 +26,22 @@ class UserService:
 
     collection_name = "users"
 
-    def _get_collection(self, session: AsyncIOMotorDatabase):
-        return session[self.collection_name]
-
-    def _parse_object_id(self, user_id: str) -> ObjectId:
-        try:
-            return ObjectId(user_id)
-        except InvalidId as exc:
-            raise NotFoundException("User not found") from exc
+    def _get_repository(self, session: AsyncIOMotorDatabase) -> UserRepository:
+        return UserRepository(session)
 
     def _hash_password(self, password: str) -> str:
         return hash_password(password)
 
-    def _to_response(self, document: dict) -> UserResponse:
+    def _to_response(self, document: UserDocument) -> UserResponse:
         return UserResponse(
-            id=str(document["_id"]),
-            email=document["email"],
-            username=document["username"],
-            full_name=document.get("full_name"),
-            is_active=document["is_active"],
-            created_at=document["created_at"],
-            updated_at=document["updated_at"],
+            id=document.id,
+            email=document.email,
+            username=document.username,
+            full_name=document.full_name,
+            is_active=document.is_active,
+            created_at=document.created_at,
+            updated_at=document.updated_at,
         )
-
-    async def _ensure_unique_constraints(
-        self,
-        collection,
-        *,
-        email: Optional[str] = None,
-        username: Optional[str] = None,
-        exclude_id: Optional[ObjectId] = None,
-    ) -> None:
-        if email is not None:
-            email_filter = {"email": email}
-            if exclude_id is not None:
-                email_filter["_id"] = {"$ne": exclude_id}
-            if await collection.find_one(email_filter):
-                raise ConflictException("Email already registered")
-
-        if username is not None:
-            username_filter = {"username": username}
-            if exclude_id is not None:
-                username_filter["_id"] = {"$ne": exclude_id}
-            if await collection.find_one(username_filter):
-                raise ConflictException("Username already registered")
 
     async def create_user(
         self, session: AsyncIOMotorDatabase, user_data: UserCreate
@@ -84,26 +56,27 @@ class UserService:
         Returns:
             Created user response
         """
-        collection = self._get_collection(session)
-        await self._ensure_unique_constraints(
-            collection, email=user_data.email, username=user_data.username
-        )
+        repository = self._get_repository(session)
+        if await repository.email_exists(str(user_data.email)):
+            raise ConflictException("Email already registered")
+        if await repository.username_exists(user_data.username):
+            raise ConflictException("Username already registered")
 
         now = datetime.now(timezone.utc)
-        document = {
-            "email": user_data.email,
-            "username": user_data.username,
-            "full_name": user_data.full_name,
-            "hashed_password": self._hash_password(user_data.password),
-            "is_active": True,
-            "is_superuser": False,
-            "created_at": now,
-            "updated_at": now,
-        }
+        document = UserCreateDocument(
+            email=user_data.email,
+            username=user_data.username,
+            full_name=user_data.full_name,
+            hashed_password=self._hash_password(user_data.password),
+            is_active=True,
+            is_superuser=False,
+            role_ids=[],
+            created_at=now,
+            updated_at=now,
+        )
 
-        result = await collection.insert_one(document)
-        document["_id"] = result.inserted_id
-        return self._to_response(document)
+        created_user = await repository.create(document)
+        return self._to_response(created_user)
 
     async def get_user_by_id(
         self, session: AsyncIOMotorDatabase, user_id: str
@@ -118,10 +91,8 @@ class UserService:
         Returns:
             User response or None if not found
         """
-        collection = self._get_collection(session)
-        object_id = self._parse_object_id(user_id)
-        document = await collection.find_one({"_id": object_id})
-
+        repository = self._get_repository(session)
+        document = await repository.get_by_id(user_id)
         if document is None:
             raise NotFoundException("User not found")
 
@@ -141,9 +112,8 @@ class UserService:
         Returns:
             List of user responses
         """
-        collection = self._get_collection(session)
-        cursor = collection.find({}).skip(skip).limit(limit)
-        documents = await cursor.to_list(length=limit)
+        repository = self._get_repository(session)
+        documents = await repository.get_all(skip=skip, limit=limit)
         return [self._to_response(document) for document in documents]
 
     async def update_user(
@@ -160,10 +130,8 @@ class UserService:
         Returns:
             Updated user response
         """
-        collection = self._get_collection(session)
-        object_id = self._parse_object_id(user_id)
-        existing_user = await collection.find_one({"_id": object_id})
-
+        repository = self._get_repository(session)
+        existing_user = await repository.get_by_id(user_id)
         if existing_user is None:
             raise NotFoundException("User not found")
 
@@ -171,12 +139,15 @@ class UserService:
         if not update_data:
             return self._to_response(existing_user)
 
-        await self._ensure_unique_constraints(
-            collection,
-            email=update_data.get("email"),
-            username=update_data.get("username"),
-            exclude_id=object_id,
-        )
+        email = update_data.get("email")
+        if email is not None and await repository.email_exists(str(email), exclude_id=user_id):
+            raise ConflictException("Email already registered")
+
+        username = update_data.get("username")
+        if username is not None and await repository.username_exists(
+            username, exclude_id=user_id
+        ):
+            raise ConflictException("Username already registered")
 
         if "password" in update_data:
             update_data["hashed_password"] = self._hash_password(
@@ -185,9 +156,9 @@ class UserService:
 
         update_data["updated_at"] = datetime.now(timezone.utc)
 
-        await collection.update_one({"_id": object_id}, {"$set": update_data})
-        updated_user = await collection.find_one({"_id": object_id})
-
+        updated_user = await repository.update(
+            user_id, UserUpdateDocument(**update_data)
+        )
         if updated_user is None:
             raise NotFoundException("User not found")
 
@@ -201,11 +172,9 @@ class UserService:
             session: Database session
             user_id: User ID to delete
         """
-        collection = self._get_collection(session)
-        object_id = self._parse_object_id(user_id)
-        result = await collection.delete_one({"_id": object_id})
-
-        if result.deleted_count == 0:
+        repository = self._get_repository(session)
+        deleted = await repository.delete(user_id)
+        if not deleted:
             raise NotFoundException("User not found")
 
 
