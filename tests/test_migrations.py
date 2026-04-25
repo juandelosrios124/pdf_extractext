@@ -2,9 +2,12 @@
 Tests for the migration system.
 """
 
+import os
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
+os.environ["DEBUG"] = "true"
 
 from migrations.config import MigrationConfig
 from migrations.exceptions import (
@@ -190,6 +193,60 @@ class TestMigrationFunctions:
             ]
             assert "up" in names, f"{py_file.name} missing up() function"
             assert "down" in names, f"{py_file.name} missing down() function"
+
+    @pytest.mark.asyncio
+    async def test_user_role_migration_creates_indexes_and_seeds_roles(self):
+        """User/role migration should create indexes and default roles."""
+        runner = MigrationRunner()
+        module = runner._load_migration_module(
+            runner._migrations_dir / "005_create_users_and_roles.py"
+        )
+
+        db = MagicMock()
+        db.users = MagicMock()
+        db.roles = MagicMock()
+
+        db.users.update_many = AsyncMock(return_value=MagicMock(modified_count=0))
+        db.users.create_index = AsyncMock()
+        db.roles.create_index = AsyncMock()
+        db.roles.update_one = AsyncMock()
+
+        await module.up(db)
+
+        db.users.create_index.assert_any_call(
+            "email", background=True, name="idx_users_email_unique", unique=True
+        )
+        db.users.create_index.assert_any_call(
+            "username", background=True, name="idx_users_username_unique", unique=True
+        )
+        db.roles.create_index.assert_any_call(
+            "name", background=True, name="idx_roles_name_unique", unique=True
+        )
+        assert db.roles.update_one.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_user_role_migration_down_drops_indexes(self):
+        """User/role migration down should remove indexes and seeded roles."""
+        runner = MigrationRunner()
+        module = runner._load_migration_module(
+            runner._migrations_dir / "005_create_users_and_roles.py"
+        )
+
+        db = MagicMock()
+        db.users = MagicMock()
+        db.roles = MagicMock()
+
+        db.users.drop_index = AsyncMock()
+        db.roles.drop_index = AsyncMock()
+        db.users.update_many = AsyncMock(return_value=MagicMock(modified_count=0))
+        db.roles.delete_many = AsyncMock(return_value=MagicMock(deleted_count=2))
+
+        await module.down(db)
+
+        db.users.drop_index.assert_any_call("idx_users_email_unique")
+        db.users.drop_index.assert_any_call("idx_users_username_unique")
+        db.roles.drop_index.assert_any_call("idx_roles_name_unique")
+        db.roles.delete_many.assert_called_once()
 
 
 class TestCLI:

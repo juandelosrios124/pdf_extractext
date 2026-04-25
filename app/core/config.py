@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     ENVIRONMENT: str = "development"
+    SECRET_KEY: str = "change-me-in-production"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    JWT_ALGORITHM: Literal["HS256"] = "HS256"
 
     # MongoDB
     MONGODB_URL: str = "mongodb://localhost:27017"
