@@ -1,5 +1,7 @@
 # PDF Extract API
 
+# Integrantes: Olivetti Santino, De los Rios Juasn Ignacio, De la Rosa Santiago
+
 API REST para extracción de texto desde archivos PDF, con persistencia en MongoDB y validación por checksum SHA-256.
 
 ---
