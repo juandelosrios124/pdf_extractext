@@ -34,7 +34,7 @@ API REST para extracción de texto desde archivos PDF, con persistencia en Mongo
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <url-del-repositorio>
+git clone https://github.com/juandelosrios124/pdf_extractext
 cd pdf_extractext
 ```
 
