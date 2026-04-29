@@ -20,6 +20,7 @@ def mock_document_repository():
     """Create a mock DocumentRepository."""
     repo = MagicMock()
     repo.save_document = AsyncMock(return_value="507f1f77bcf86cd799439011")
+    repo.find_by_checksum = AsyncMock(return_value=None)
     return repo
 
 
@@ -144,6 +145,51 @@ def test_upload_accepts_file_within_size_limit(client, mock_document_repository,
     response = client.post(
         "/api/v1/pdf/upload",
         files={"file": ("small.pdf", pdf_file, "application/pdf")},
+    )
+
+    # Assert
+    assert response.status_code == 200
+
+def test_upload_rejects_duplicate_pdf(client, mock_document_repository, sample_pdf_bytes):
+    """Test que un PDF duplicado es rechazado con 409."""
+    # Arrange — el repository encuentra un duplicado
+    mock_document_repository.find_by_checksum = AsyncMock(
+        return_value={
+            "_id": "507f1f77bcf86cd799439011",
+            "filename": "original.pdf",
+            "text": "Texto existente",
+            "checksum": "abc123",
+        }
+    )
+
+    pdf_file = BytesIO(sample_pdf_bytes)
+
+    # Act
+    response = client.post(
+        "/api/v1/pdf/upload",
+        files={"file": ("duplicado.pdf", pdf_file, "application/pdf")},
+    )
+
+    # Assert
+    assert response.status_code == 409
+    data = response.json()
+    assert "detail" in data
+
+
+def test_upload_accepts_unique_pdf(client, mock_document_repository, sample_pdf_bytes):
+    """Test que un PDF único es aceptado correctamente."""
+    # Arrange — no hay duplicado
+    mock_document_repository.find_by_checksum = AsyncMock(return_value=None)
+    mock_document_repository.save_document = AsyncMock(
+        return_value="507f1f77bcf86cd799439011"
+    )
+
+    pdf_file = BytesIO(sample_pdf_bytes)
+
+    # Act
+    response = client.post(
+        "/api/v1/pdf/upload",
+        files={"file": ("unico.pdf", pdf_file, "application/pdf")},
     )
 
     # Assert

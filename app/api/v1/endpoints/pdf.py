@@ -34,15 +34,23 @@ async def upload_pdf(
     if len(pdf_bytes) > settings.MAX_UPLOAD_SIZE:
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=f"El archivo supera el tamaño máximo permitido de "
-                   f"{settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB, el archivo pesa: "
-                   f"{len(pdf_bytes) // (1024 * 1024)} MB"
+            detail=f"El archivo supera el tamaño máximo de "
+                   f"{settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB"
         )
 
     # 3️⃣ Calcular checksum
     checksum = calculate_checksum(pdf_bytes)
 
-    # 4️⃣ Extraer texto
+    # 4️⃣ Verificar duplicado
+    existing = await repository.find_by_checksum(checksum)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"El documento ya existe en la base de datos "
+                   f"con id: {existing['_id']}"
+        )
+
+    # 5️⃣ Extraer texto
     try:
         text = extract_text_from_bytes(pdf_bytes)
     except ValueError:
@@ -51,7 +59,7 @@ async def upload_pdf(
             detail="El contenido del archivo no es un PDF válido"
         )
 
-    # 5️⃣ Persistir
+    # 6️⃣ Persistir
     doc_id = await repository.save_document(file.filename, text, checksum)
 
     return DocumentUploadResponse(
