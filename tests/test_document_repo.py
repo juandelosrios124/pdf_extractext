@@ -70,3 +70,26 @@ async def test_get_document_not_found(repo, mock_db):
 async def test_get_document_with_invalid_id_returns_none(repo):
     result = await repo.get_document("id-malformado")
     assert result is None
+
+@pytest.mark.asyncio
+async def test_find_by_checksum_returns_document_when_exists(repo, mock_db):
+    """Test que find_by_checksum retorna documento si el checksum existe."""
+    mock_db["documents"].find_one = AsyncMock(
+        return_value={
+            "_id": VALID_OBJECT_ID,
+            "filename": "archivo.pdf",
+            "text": "Texto del PDF",
+            "checksum": "abc123",
+        }
+    )
+    result = await repo.find_by_checksum("abc123")
+    assert result is not None
+    assert result["checksum"] == "abc123"
+
+
+@pytest.mark.asyncio
+async def test_find_by_checksum_returns_none_when_not_exists(repo, mock_db):
+    """Test que find_by_checksum retorna None si no existe."""
+    mock_db["documents"].find_one = AsyncMock(return_value=None)
+    result = await repo.find_by_checksum("checksum-inexistente")
+    assert result is None

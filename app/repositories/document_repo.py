@@ -28,3 +28,18 @@ class DocumentRepository:
         if result:
             result["_id"] = str(result["_id"])
         return result
+
+    async def find_by_checksum(self, checksum: str) -> dict | None:
+        """
+        Busca un documento por su checksum SHA-256.
+
+        Args:
+            checksum: Hash SHA-256 del archivo PDF
+
+        Returns:
+            Documento si existe, None si no hay duplicado
+        """
+        result = await self.collection.find_one({"checksum": checksum})
+        if result:
+            result["_id"] = str(result["_id"])
+        return result
