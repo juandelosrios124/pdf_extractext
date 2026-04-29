@@ -112,3 +112,39 @@ class TestPdfUploadEndpoint:
 
         # Assert
         assert response.status_code == 422
+
+def test_upload_rejects_file_exceeding_size_limit(client):
+    """Test que archivos mayores al límite son rechazados con 413."""
+    # Arrange — PDF falso que supera el límite
+    # MAX_UPLOAD_SIZE = 52428800 (50MB), creamos uno de 51MB
+    oversized_content = b"%PDF-1.4" + b"x" * (51 * 1024 * 1024)
+    oversized_file = BytesIO(oversized_content)
+
+    # Act
+    response = client.post(
+        "/api/v1/pdf/upload",
+        files={"file": ("large.pdf", oversized_file, "application/pdf")},
+    )
+
+    # Assert
+    assert response.status_code == 413
+    data = response.json()
+    assert "detail" in data
+
+
+def test_upload_accepts_file_within_size_limit(client, mock_document_repository, sample_pdf_bytes):
+    """Test que archivos dentro del límite son aceptados."""
+    # Arrange
+    mock_document_repository.save_document = AsyncMock(
+        return_value="507f1f77bcf86cd799439011"
+    )
+    pdf_file = BytesIO(sample_pdf_bytes)
+
+    # Act
+    response = client.post(
+        "/api/v1/pdf/upload",
+        files={"file": ("small.pdf", pdf_file, "application/pdf")},
+    )
+
+    # Assert
+    assert response.status_code == 200
