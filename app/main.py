@@ -16,6 +16,7 @@ from app.core.logging.middleware import (
     CorrelationIdMiddleware,
     RequestLoggingMiddleware,
 )
+from migrations.runner import MigrationRunner
 
 logger = get_logger(__name__)
 
@@ -37,11 +38,17 @@ async def lifespan(app: FastAPI):
             "environment": settings.ENVIRONMENT,
         },
     )
+
+    # ✅ Correr migraciones automáticamente al arrancar
+    runner = MigrationRunner(db=db.get_database())
+    await runner.migrate()
+    logger.info("Migrations applied successfully")
+
     yield
+
     # Shutdown
     logger.info("Application shutting down")
     await db.disconnect()
-
 
 def create_application() -> FastAPI:
     """
