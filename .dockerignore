@@ -1,9 +1,57 @@
+# Entornos virtuales
 .venv
+venv/
+
+# Control de versiones
 .git
-.pytest_cache
-.ruff_cache
+.gitignore
+
+# Cache de Python
 __pycache__
 *.pyc
+*.pyo
+*.pyd
+.Python
+
+# Cache de testing y linting
+.pytest_cache
+.ruff_cache
+.mypy_cache
+htmlcov/
+.coverage
+
+# Variables de entorno y secretos
 .env
+.env.local
+*.env.backup
+
+# Tests (no se necesitan en producción)
 tests/
 
+# Documentación
+README.md
+*.md
+docs/
+
+# Archivos propios de Docker (no deben estar dentro de la imagen)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# IDEs y editores
+.vscode/
+.idea/
+*.swp
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# CI/CD
+.github/
+
+# Backups de migraciones
+migrations/backups/
+
+# Logs locales
+*.log
