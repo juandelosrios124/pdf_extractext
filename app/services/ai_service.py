@@ -37,7 +37,7 @@ class AIService:
         Raises:
             httpx.HTTPError: If the request to Ollama fails
         """
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=180.0) as client:
             response = await client.post(
                 f"{self._base_url}/api/generate",
                 json={
@@ -51,19 +51,14 @@ class AIService:
             return data["response"].strip()
 
     async def summarize(self, text: str) -> str:
-        """
-        Generates a summary of the given text.
+        # Limitar el texto para evitar prompts excesivamente largos
+        max_chars = 4000
+        truncated_text = text[:max_chars]
 
-        Args:
-            text: The text to summarize
-
-        Returns:
-            A concise summary
-        """
         prompt = (
             "Resumí el siguiente texto de forma concisa, "
             "manteniendo solo la información más relevante:\n\n"
-            f"{text}"
+            f"{truncated_text}"
         )
         return await self._generate(prompt)
 
