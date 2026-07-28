@@ -215,3 +215,24 @@ class TestDeleteDocumentEndpoint:
         response = client.delete(f"/api/v1/pdf/{VALID_ID}")
 
         assert response.status_code == 404
+class TestSummarizeDocumentEndpoint:
+
+    def test_summarize_document_returns_200(self, client, mock_service):
+        from unittest.mock import AsyncMock
+        mock_service.summarize_document = AsyncMock(return_value="Este es un resumen.")
+
+        response = client.post(f"/api/v1/pdf/{VALID_ID}/summarize")
+
+        assert response.status_code == 200
+        assert response.json()["summary"] == "Este es un resumen."
+
+    def test_summarize_document_not_found_returns_404(self, client, mock_service):
+        from unittest.mock import AsyncMock
+        from app.core.exceptions import NotFoundException
+        mock_service.summarize_document = AsyncMock(
+            side_effect=NotFoundException("Document not found")
+        )
+
+        response = client.post(f"/api/v1/pdf/{VALID_ID}/summarize")
+
+        assert response.status_code == 404

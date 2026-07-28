@@ -13,6 +13,7 @@ from app.models.document import DocumentCreateDocument, DocumentDocument, Docume
 from app.repositories.document_repo import DocumentRepository
 from app.schemas.document import DocumentResponse, DocumentUpdate
 from app.services.pdf_service import calculate_checksum, extract_text_from_bytes
+from app.services.ai_service import AIService
 
 
 class DocumentService:
@@ -99,6 +100,21 @@ class DocumentService:
         deleted = await repository.delete(doc_id)
         if not deleted:
             raise NotFoundException("Document not found")
+
+    def _get_repository(self, session: AsyncIOMotorDatabase) -> DocumentRepository:
+        return DocumentRepository(session)
+
+    # ... resto de métodos existentes sin cambios ...
+
+    async def summarize_document(
+        self, session: AsyncIOMotorDatabase, doc_id: str, ai_service: AIService
+    ) -> str:
+        repository = self._get_repository(session)
+        document = await repository.get_by_id(doc_id)
+        if document is None:
+            raise NotFoundException("Document not found")
+
+        return await ai_service.summarize(document.text)
 
 
 document_service = DocumentService()

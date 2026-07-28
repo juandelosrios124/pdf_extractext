@@ -10,6 +10,9 @@ from app.core.exceptions import ConflictException, NotFoundException
 from app.db.database import get_db_session
 from app.schemas.document import DocumentResponse, DocumentUpdate
 from app.services.document_service import document_service
+from app.services.ai_service import AIService
+from app.schemas.document import DocumentResponse, DocumentUpdate, SummarizeResponse
+
 
 router = APIRouter()
 
@@ -84,5 +87,21 @@ async def delete_document(
 ):
     try:
         await document_service.delete_document(session, document_id)
+    except NotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+def get_ai_service() -> AIService:
+    return AIService()
+
+
+@router.post("/{document_id}/summarize", response_model=SummarizeResponse)
+async def summarize_document(
+    document_id: str,
+    session: AsyncIOMotorDatabase = Depends(get_db_session),
+    ai_service: AIService = Depends(get_ai_service),
+):
+    try:
+        summary = await document_service.summarize_document(session, document_id, ai_service)
+        return SummarizeResponse(summary=summary)
     except NotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

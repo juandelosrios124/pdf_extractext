@@ -41,3 +41,29 @@ class DocumentUpdate(BaseModel):
     """Request body for updating a document."""
 
     filename: Optional[str] = Field(None, description="Nuevo nombre del archivo")
+
+class SummarizeResponse(BaseModel):
+    """Schema de respuesta para el resumen generado."""
+    summary: str = Field(..., description="Resumen generado por IA")
+
+class DocumentListItem(BaseModel):
+    """Item individual para el listado de documentos (sin texto completo)."""
+    id: str = Field(..., description="MongoDB document ID")
+    filename: str = Field(..., description="Nombre original del archivo PDF")
+    checksum: str = Field(..., description="Checksum SHA-256 del contenido del PDF")
+
+
+class DocumentDetailResponse(BaseModel):
+    """Respuesta detallada de un documento — incluye el texto completo."""
+    id: str = Field(..., description="MongoDB document ID")
+    filename: str = Field(..., description="Nombre original del archivo PDF")
+    checksum: str = Field(..., description="Checksum SHA-256 del contenido del PDF")
+    text: str = Field(..., description="Texto extraído del PDF")
+
+
+class DocumentUpdateRequest(BaseModel):
+    """Request body para actualizar el filename de un documento."""
+    filename: str = Field(..., description="Nuevo nombre del archivo")
+
+class SummarizeResponse(BaseModel):
+    summary: str = Field(..., description="Resumen generado por IA")
