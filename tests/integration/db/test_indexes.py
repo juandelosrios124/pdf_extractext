@@ -1,9 +1,13 @@
 import pytest
 
+from app.repositories.document_repo import DocumentRepository
+from app.repositories.user_repository import UserRepository
+
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_documents_indexes_exist(db):
-    indexes = await db["documents"].index_information()
+    indexes = await db[DocumentRepository.collection_name].index_information()
 
     assert "ux_documents_checksum" in indexes
     assert indexes["ux_documents_checksum"]["unique"] is True
@@ -13,8 +17,9 @@ async def test_documents_indexes_exist(db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_users_indexes_exist(db):
-    indexes = await db["users"].index_information()
+    indexes = await db[UserRepository.collection_name].index_information()
 
     assert "ux_users_email" in indexes
     assert indexes["ux_users_email"]["unique"] is True
