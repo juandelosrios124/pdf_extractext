@@ -7,12 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from app.api.deps import get_document_service
 from app.core.config import settings
 from app.core.exceptions import ConflictException, NotFoundException
+from app.core.logging import get_logger
 from app.schemas.document import DocumentResponse, DocumentUpdate
 from app.services.document_service import DocumentService
 from app.services.ai_service import AIService
 from app.schemas.document import DocumentResponse, DocumentUpdate, SummarizeResponse
 
 
+logger = get_logger(__name__)
 router = APIRouter()
 
 
@@ -44,6 +46,12 @@ async def upload_pdf(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El contenido del archivo no es un PDF válido",
+        )
+    except Exception:
+        logger.exception("Error inesperado al subir PDF", extra={"upload_filename": file.filename})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error interno al procesar el PDF",
         )
 
 

@@ -28,8 +28,8 @@ def extract_text_from_bytes(pdf_bytes: bytes) -> str:
 
     try:
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    except Exception as e:
-        logger.error(
+    except fitz.FileDataError as e:
+        logger.warning(
             "Invalid PDF bytes",
             extra={"pdf_size": len(pdf_bytes), "error": str(e)},
         )
