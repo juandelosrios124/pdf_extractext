@@ -105,6 +105,21 @@ class TestPdfUploadEndpoint:
         )
         assert response.status_code == 409
 
+    def test_upload_logs_and_returns_500_on_unexpected_error(
+        self, client, mock_service, sample_pdf_bytes
+    ):
+        mock_service.upload_pdf = AsyncMock(side_effect=RuntimeError("mongo caído"))
+
+        with patch("app.api.v1.endpoints.pdf.logger") as mock_logger:
+            response = client.post(
+                "/api/v1/pdf/upload",
+                files={"file": ("doc.pdf", BytesIO(sample_pdf_bytes), "application/pdf")},
+            )
+
+        assert response.status_code == 500
+        assert "mongo caído" not in response.text
+        mock_logger.exception.assert_called_once()
+
     def test_upload_requires_file(self, client):
         response = client.post("/api/v1/pdf/upload")
         assert response.status_code == 422
