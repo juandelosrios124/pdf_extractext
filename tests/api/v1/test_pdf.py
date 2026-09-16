@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.deps import get_document_service
 from app.core.exceptions import ConflictException, NotFoundException
 from app.main import create_application
 from app.schemas.document import DocumentResponse
@@ -46,8 +47,7 @@ def mock_service():
 @pytest.fixture
 def client(mock_service):
     app = create_application()
-    import app.api.v1.endpoints.pdf as pdf_module
-    pdf_module.document_service = mock_service
+    app.dependency_overrides[get_document_service] = lambda: mock_service
     return TestClient(app)
 
 
