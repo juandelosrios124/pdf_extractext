@@ -7,13 +7,11 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.interfaces.repository import RepositoryInterface
+from app.services.ports import DocumentRepositoryPort
 from app.models.document import DocumentCreateDocument, DocumentDocument, DocumentUpdateDocument
 
 
-class DocumentRepository(
-    RepositoryInterface[DocumentDocument, DocumentCreateDocument, DocumentUpdateDocument]
-):
+class DocumentRepository(DocumentRepositoryPort):
     """Repository responsible for document persistence."""
 
     collection_name = "documents"

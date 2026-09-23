@@ -45,12 +45,26 @@ def mock_service():
 
 @pytest.fixture
 def client(mock_service):
-    app = create_application()
-    import app.api.v1.endpoints.pdf as pdf_module
-    pdf_module.document_service = mock_service
-    return TestClient(app)
+    from app.db.database import get_db_session
 
+    async def override_get_db_session():
+        yield MagicMock()
 
+    with patch("app.main.db.connect", AsyncMock()), \
+         patch("app.main.db.disconnect", AsyncMock()), \
+         patch("app.main.db.get_database", MagicMock(return_value=MagicMock())), \
+         patch("app.main.MigrationRunner") as mock_runner_cls:
+
+        mock_runner_cls.return_value.migrate = AsyncMock()
+
+        app = create_application()
+        app.dependency_overrides[get_db_session] = override_get_db_session
+
+        import app.api.v1.endpoints.pdf as pdf_module
+        pdf_module.document_service = mock_service
+
+        with TestClient(app) as test_client:
+            yield test_client
 # --- POST /upload ---
 
 class TestPdfUploadEndpoint:

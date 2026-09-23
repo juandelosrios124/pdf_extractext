@@ -10,7 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.exceptions import ConflictException, NotFoundException
 from app.models.document import DocumentCreateDocument, DocumentDocument, DocumentUpdateDocument
-from app.repositories.document_repo import DocumentRepository
+from app.services.ports import DocumentRepositoryPort
 from app.schemas.document import DocumentResponse, DocumentUpdate
 from app.services.pdf_service import calculate_checksum, extract_text_from_bytes
 from app.services.ai_service import AIService
@@ -19,7 +19,7 @@ from app.services.ai_service import AIService
 class DocumentService:
     """Service for PDF document CRUD operations."""
 
-    def _get_repository(self, session: AsyncIOMotorDatabase) -> DocumentRepository:
+    def _get_repository(self, session: AsyncIOMotorDatabase) -> DocumentRepositoryPort:
         return DocumentRepository(session)
 
     def _to_response(self, document: DocumentDocument) -> DocumentResponse:
@@ -101,10 +101,6 @@ class DocumentService:
         if not deleted:
             raise NotFoundException("Document not found")
 
-    def _get_repository(self, session: AsyncIOMotorDatabase) -> DocumentRepository:
-        return DocumentRepository(session)
-
-    # ... resto de métodos existentes sin cambios ...
 
     async def summarize_document(
         self, session: AsyncIOMotorDatabase, doc_id: str, ai_service: AIService
