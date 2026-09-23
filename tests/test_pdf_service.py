@@ -1,5 +1,7 @@
 import pytest
 import hashlib
+from unittest.mock import patch
+
 from app.services.pdf_service import extract_text_from_bytes
 
 def test_extract_text_returns_string(sample_pdf_bytes):
@@ -13,6 +15,15 @@ def test_extract_text_returns_content(sample_pdf_bytes):
 def test_extract_text_with_invalid_bytes_raises_error():
     with pytest.raises(ValueError):
         extract_text_from_bytes(b"esto no es un pdf")
+
+def test_extract_text_with_empty_bytes_raises_error():
+    with pytest.raises(ValueError):
+        extract_text_from_bytes(b"")
+
+def test_extract_text_does_not_mask_unexpected_errors():
+    with patch("app.services.pdf_service.fitz.open", side_effect=RuntimeError("fallo interno")):
+        with pytest.raises(RuntimeError, match="fallo interno"):
+            extract_text_from_bytes(b"%PDF-1.4")
 
 def test_calculate_checksum_returns_string(sample_pdf_bytes):
     from app.services.pdf_service import calculate_checksum

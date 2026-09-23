@@ -16,6 +16,8 @@ from app.core.logging.middleware import (
     CorrelationIdMiddleware,
     RequestLoggingMiddleware,
 )
+from app.repositories.document_repo import DocumentRepository
+from app.services.document_service import DocumentService
 from migrations.runner import MigrationRunner
 
 logger = get_logger(__name__)
@@ -43,6 +45,9 @@ async def lifespan(app: FastAPI):
     runner = MigrationRunner(db=db.get_database())
     await runner.migrate()
     logger.info("Migrations applied successfully")
+
+    # Composition root: arma DocumentService con su repository ya conectado.
+    app.state.document_service = DocumentService(DocumentRepository(db.get_database()))
 
     yield
 

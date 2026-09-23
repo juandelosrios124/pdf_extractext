@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from bson import ObjectId
 
 os.environ["DEBUG"] = "true"
 
@@ -17,8 +16,20 @@ NOW = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
 
 @pytest.fixture
-def document_service() -> DocumentService:
-    return DocumentService()
+def mock_repository():
+    repo = MagicMock()
+    repo.find_by_checksum = AsyncMock(return_value=None)
+    repo.create = AsyncMock()
+    repo.get_by_id = AsyncMock()
+    repo.get_all = AsyncMock(return_value=[])
+    repo.update = AsyncMock()
+    repo.delete = AsyncMock(return_value=True)
+    return repo
+
+
+@pytest.fixture
+def document_service(mock_repository) -> DocumentService:
+    return DocumentService(mock_repository)
 
 
 @pytest.fixture
@@ -33,48 +44,24 @@ def sample_document() -> DocumentDocument:
     )
 
 
-@pytest.fixture
-def mock_collection():
-    col = MagicMock()
-    col.insert_one = AsyncMock(return_value=MagicMock(inserted_id=ObjectId(VALID_OBJECT_ID)))
-    col.find_one = AsyncMock(return_value=None)
-    col.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
-    col.delete_one = AsyncMock(return_value=MagicMock(deleted_count=1))
-    col.count_documents = AsyncMock(return_value=0)
-    cursor = MagicMock()
-    cursor.skip = MagicMock(return_value=cursor)
-    cursor.limit = MagicMock(return_value=cursor)
-    cursor.to_list = AsyncMock(return_value=[])
-    col.find = MagicMock(return_value=cursor)
-    return col
-
-
-@pytest.fixture
-def mock_db(mock_collection):
-    db = MagicMock()
-    db.__getitem__ = MagicMock(return_value=mock_collection)
-    return db
-
-
 # --- upload_pdf ---
 
 @pytest.mark.asyncio
-async def test_upload_pdf_creates_and_returns_response(document_service, mock_db, mock_collection):
-    inserted_doc = {
-        "_id": ObjectId(VALID_OBJECT_ID),
-        "filename": "archivo.pdf",
-        "text": "Texto extraído",
-        "checksum": "sha256-checksum",
-        "created_at": NOW,
-        "updated_at": NOW,
-    }
-    mock_collection.find_one = AsyncMock(side_effect=[None, inserted_doc])
+async def test_upload_pdf_creates_and_returns_response(document_service, mock_repository):
+    mock_repository.create.return_value = DocumentDocument(
+        id=VALID_OBJECT_ID,
+        filename="archivo.pdf",
+        text="Texto extraído",
+        checksum="sha256-checksum",
+        created_at=NOW,
+        updated_at=NOW,
+    )
 
     with (
         patch("app.services.document_service.calculate_checksum", return_value="sha256-checksum"),
         patch("app.services.document_service.extract_text_from_bytes", return_value="Texto extraído"),
     ):
-        result = await document_service.upload_pdf(mock_db, b"%PDF-fake", "archivo.pdf")
+        result = await document_service.upload_pdf(b"%PDF-fake", "archivo.pdf")
 
     assert result.id == VALID_OBJECT_ID
     assert result.filename == "archivo.pdf"
@@ -82,72 +69,51 @@ async def test_upload_pdf_creates_and_returns_response(document_service, mock_db
 
 
 @pytest.mark.asyncio
-async def test_upload_pdf_raises_conflict_if_duplicate_checksum(document_service, mock_db, mock_collection):
-    existing = {
-        "_id": ObjectId(VALID_OBJECT_ID),
-        "filename": "archivo.pdf",
-        "text": "Texto",
-        "checksum": "sha256-checksum",
-        "created_at": NOW,
-        "updated_at": NOW,
-    }
-    mock_collection.find_one = AsyncMock(return_value=existing)
+async def test_upload_pdf_raises_conflict_if_duplicate_checksum(document_service, mock_repository):
+    mock_repository.find_by_checksum.return_value = DocumentDocument(
+        id=VALID_OBJECT_ID,
+        filename="archivo.pdf",
+        text="Texto",
+        checksum="sha256-checksum",
+        created_at=NOW,
+        updated_at=NOW,
+    )
 
     with (
         patch("app.services.document_service.calculate_checksum", return_value="sha256-checksum"),
         patch("app.services.document_service.extract_text_from_bytes", return_value="Texto"),
     ):
         with pytest.raises(ConflictException, match="ya existe"):
-            await document_service.upload_pdf(mock_db, b"%PDF-fake", "archivo.pdf")
+            await document_service.upload_pdf(b"%PDF-fake", "archivo.pdf")
 
 
 # --- get_document_by_id ---
 
 @pytest.mark.asyncio
-async def test_get_document_by_id_returns_response(document_service, mock_db, mock_collection):
-    mock_collection.find_one = AsyncMock(return_value={
-        "_id": ObjectId(VALID_OBJECT_ID),
-        "filename": "archivo.pdf",
-        "text": "Texto",
-        "checksum": "abc123",
-        "created_at": NOW,
-        "updated_at": NOW,
-    })
+async def test_get_document_by_id_returns_response(document_service, mock_repository, sample_document):
+    mock_repository.get_by_id.return_value = sample_document
 
-    result = await document_service.get_document_by_id(mock_db, VALID_OBJECT_ID)
+    result = await document_service.get_document_by_id(VALID_OBJECT_ID)
 
     assert result.id == VALID_OBJECT_ID
     assert result.filename == "archivo.pdf"
 
 
 @pytest.mark.asyncio
-async def test_get_document_by_id_raises_not_found(document_service, mock_db, mock_collection):
-    mock_collection.find_one = AsyncMock(return_value=None)
+async def test_get_document_by_id_raises_not_found(document_service, mock_repository):
+    mock_repository.get_by_id.return_value = None
 
     with pytest.raises(NotFoundException):
-        await document_service.get_document_by_id(mock_db, VALID_OBJECT_ID)
+        await document_service.get_document_by_id(VALID_OBJECT_ID)
 
 
 # --- list_documents ---
 
 @pytest.mark.asyncio
-async def test_list_documents_returns_list(document_service, mock_db, mock_collection):
-    cursor = MagicMock()
-    cursor.skip = MagicMock(return_value=cursor)
-    cursor.limit = MagicMock(return_value=cursor)
-    cursor.to_list = AsyncMock(return_value=[
-        {
-            "_id": ObjectId(VALID_OBJECT_ID),
-            "filename": "archivo.pdf",
-            "text": "Texto",
-            "checksum": "abc123",
-            "created_at": NOW,
-            "updated_at": NOW,
-        }
-    ])
-    mock_collection.find = MagicMock(return_value=cursor)
+async def test_list_documents_returns_list(document_service, mock_repository, sample_document):
+    mock_repository.get_all.return_value = [sample_document]
 
-    result = await document_service.list_documents(mock_db)
+    result = await document_service.list_documents()
 
     assert isinstance(result, list)
     assert len(result) == 1
@@ -155,81 +121,65 @@ async def test_list_documents_returns_list(document_service, mock_db, mock_colle
 
 
 @pytest.mark.asyncio
-async def test_list_documents_returns_empty_list(document_service, mock_db):
-    result = await document_service.list_documents(mock_db)
+async def test_list_documents_returns_empty_list(document_service, mock_repository):
+    result = await document_service.list_documents()
     assert result == []
 
 
 # --- update_document ---
 
 @pytest.mark.asyncio
-async def test_update_document_returns_updated_response(document_service, mock_db, mock_collection):
-    updated = {
-        "_id": ObjectId(VALID_OBJECT_ID),
-        "filename": "nuevo.pdf",
-        "text": "Texto",
-        "checksum": "abc123",
-        "created_at": NOW,
-        "updated_at": NOW,
-    }
-    mock_collection.find_one = AsyncMock(side_effect=[
-        {
-            "_id": ObjectId(VALID_OBJECT_ID),
-            "filename": "archivo.pdf",
-            "text": "Texto",
-            "checksum": "abc123",
-            "created_at": NOW,
-            "updated_at": NOW,
-        },
-        updated,
-    ])
+async def test_update_document_returns_updated_response(document_service, mock_repository, sample_document):
+    mock_repository.get_by_id.return_value = sample_document
+    mock_repository.update.return_value = DocumentDocument(
+        id=VALID_OBJECT_ID,
+        filename="nuevo.pdf",
+        text="Texto",
+        checksum="abc123",
+        created_at=NOW,
+        updated_at=NOW,
+    )
 
     result = await document_service.update_document(
-        mock_db, VALID_OBJECT_ID, DocumentUpdate(filename="nuevo.pdf")
+        VALID_OBJECT_ID, DocumentUpdate(filename="nuevo.pdf")
     )
 
     assert result.filename == "nuevo.pdf"
 
 
 @pytest.mark.asyncio
-async def test_update_document_raises_not_found(document_service, mock_db, mock_collection):
-    mock_collection.find_one = AsyncMock(return_value=None)
+async def test_update_document_raises_not_found(document_service, mock_repository):
+    mock_repository.get_by_id.return_value = None
 
     with pytest.raises(NotFoundException):
         await document_service.update_document(
-            mock_db, VALID_OBJECT_ID, DocumentUpdate(filename="nuevo.pdf")
+            VALID_OBJECT_ID, DocumentUpdate(filename="nuevo.pdf")
         )
 
 
 @pytest.mark.asyncio
-async def test_update_document_with_empty_payload_returns_current(document_service, mock_db, mock_collection):
-    existing = {
-        "_id": ObjectId(VALID_OBJECT_ID),
-        "filename": "archivo.pdf",
-        "text": "Texto",
-        "checksum": "abc123",
-        "created_at": NOW,
-        "updated_at": NOW,
-    }
-    mock_collection.find_one = AsyncMock(return_value=existing)
+async def test_update_document_with_empty_payload_returns_current(
+    document_service, mock_repository, sample_document
+):
+    mock_repository.get_by_id.return_value = sample_document
 
-    result = await document_service.update_document(mock_db, VALID_OBJECT_ID, DocumentUpdate())
+    result = await document_service.update_document(VALID_OBJECT_ID, DocumentUpdate())
 
     assert result.filename == "archivo.pdf"
-    mock_collection.update_one.assert_not_called()
+    mock_repository.update.assert_not_called()
 
 
 # --- delete_document ---
 
 @pytest.mark.asyncio
-async def test_delete_document_succeeds(document_service, mock_db):
-    result = await document_service.delete_document(mock_db, VALID_OBJECT_ID)
+async def test_delete_document_succeeds(document_service, mock_repository):
+    result = await document_service.delete_document(VALID_OBJECT_ID)
     assert result is None
 
 
 @pytest.mark.asyncio
-async def test_delete_document_raises_not_found(document_service, mock_db, mock_collection):
-    mock_collection.delete_one = AsyncMock(return_value=MagicMock(deleted_count=0))
+async def test_delete_document_raises_not_found(document_service, mock_repository):
+    mock_repository.delete.return_value = False
 
     with pytest.raises(NotFoundException):
-        await document_service.delete_document(mock_db, VALID_OBJECT_ID)
+        await document_service.delete_document(VALID_OBJECT_ID)

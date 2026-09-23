@@ -9,7 +9,7 @@ os.environ["DEBUG"] = "true"
 
 from app.db.database import get_db_session
 from app.main import create_application
-
+from unittest.mock import AsyncMock, MagicMock, patch
 
 @pytest.fixture
 def mock_db():
@@ -22,15 +22,18 @@ def client(mock_db):
     async def override_get_db_session():
         yield mock_db
 
-    with patch("app.main.db.connect", AsyncMock()), patch(
-        "app.main.db.disconnect", AsyncMock()
-    ):
+    with patch("app.main.db.connect", AsyncMock()), \
+         patch("app.main.db.disconnect", AsyncMock()), \
+         patch("app.main.db.get_database", MagicMock(return_value=MagicMock())), \
+         patch("app.main.MigrationRunner") as mock_runner_cls:
+
+        mock_runner_cls.return_value.migrate = AsyncMock()
+
         app = create_application()
         app.dependency_overrides[get_db_session] = override_get_db_session
 
         with TestClient(app) as test_client:
             yield test_client
-
 
 def test_login_and_me_end_to_end(client):
     create_response = client.post(

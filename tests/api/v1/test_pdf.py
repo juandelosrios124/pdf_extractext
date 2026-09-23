@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.deps import get_document_service
 from app.core.exceptions import ConflictException, NotFoundException
 from app.main import create_application
 from app.schemas.document import DocumentResponse
@@ -45,11 +46,6 @@ def mock_service():
 
 @pytest.fixture
 def client(mock_service):
-    from app.db.database import get_db_session
-
-    async def override_get_db_session():
-        yield MagicMock()
-
     with patch("app.main.db.connect", AsyncMock()), \
          patch("app.main.db.disconnect", AsyncMock()), \
          patch("app.main.db.get_database", MagicMock(return_value=MagicMock())), \
@@ -58,13 +54,11 @@ def client(mock_service):
         mock_runner_cls.return_value.migrate = AsyncMock()
 
         app = create_application()
-        app.dependency_overrides[get_db_session] = override_get_db_session
-
-        import app.api.v1.endpoints.pdf as pdf_module
-        pdf_module.document_service = mock_service
+        app.dependency_overrides[get_document_service] = lambda: mock_service
 
         with TestClient(app) as test_client:
             yield test_client
+
 # --- POST /upload ---
 
 class TestPdfUploadEndpoint:
@@ -118,6 +112,21 @@ class TestPdfUploadEndpoint:
             files={"file": ("duplicado.pdf", BytesIO(sample_pdf_bytes), "application/pdf")},
         )
         assert response.status_code == 409
+
+    def test_upload_logs_and_returns_500_on_unexpected_error(
+        self, client, mock_service, sample_pdf_bytes
+    ):
+        mock_service.upload_pdf = AsyncMock(side_effect=RuntimeError("mongo caído"))
+
+        with patch("app.api.v1.endpoints.pdf.logger") as mock_logger:
+            response = client.post(
+                "/api/v1/pdf/upload",
+                files={"file": ("doc.pdf", BytesIO(sample_pdf_bytes), "application/pdf")},
+            )
+
+        assert response.status_code == 500
+        assert "mongo caído" not in response.text
+        mock_logger.exception.assert_called_once()
 
     def test_upload_requires_file(self, client):
         response = client.post("/api/v1/pdf/upload")
