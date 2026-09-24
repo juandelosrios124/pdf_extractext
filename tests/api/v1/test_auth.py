@@ -14,12 +14,22 @@ from app.main import create_application
 from app.schemas.auth import Token
 from app.schemas.user import UserResponse
 from app.services.auth_service import auth_service
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.fixture
 def client():
-    app = create_application()
-    return TestClient(app)
+    with patch("app.main.db.connect", AsyncMock()), \
+         patch("app.main.db.disconnect", AsyncMock()), \
+         patch("app.main.db.get_database", MagicMock(return_value=MagicMock())), \
+         patch("app.main.MigrationRunner") as mock_runner_cls:
+
+        mock_runner_cls.return_value.migrate = AsyncMock()
+
+        app = create_application()
+
+        with TestClient(app) as test_client:
+            yield test_client
 
 
 class TestAuthEndpoint:

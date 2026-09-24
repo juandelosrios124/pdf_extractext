@@ -8,7 +8,7 @@ from typing import List
 
 from app.core.exceptions import ConflictException, NotFoundException
 from app.models.document import DocumentCreateDocument, DocumentDocument, DocumentUpdateDocument
-from app.repositories.document_repo import DocumentRepository
+from app.services.ports import DocumentRepositoryPort
 from app.schemas.document import DocumentResponse, DocumentUpdate
 from app.services.pdf_service import calculate_checksum, extract_text_from_bytes
 from app.services.ai_service import AIService
@@ -17,7 +17,7 @@ from app.services.ai_service import AIService
 class DocumentService:
     """Service for PDF document CRUD operations."""
 
-    def __init__(self, repository: DocumentRepository):
+    def __init__(self, repository: DocumentRepositoryPort):
         self.repository = repository
 
     def _to_response(self, document: DocumentDocument) -> DocumentResponse:
@@ -85,7 +85,7 @@ class DocumentService:
 
     async def summarize_document(self, doc_id: str, ai_service: AIService) -> str:
         document = await self.repository.get_by_id(doc_id)
+        
         if document is None:
             raise NotFoundException("Document not found")
-
         return await ai_service.summarize(document.text)

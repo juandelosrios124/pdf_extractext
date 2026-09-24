@@ -46,10 +46,18 @@ def mock_service():
 
 @pytest.fixture
 def client(mock_service):
-    app = create_application()
-    app.dependency_overrides[get_document_service] = lambda: mock_service
-    return TestClient(app)
+    with patch("app.main.db.connect", AsyncMock()), \
+         patch("app.main.db.disconnect", AsyncMock()), \
+         patch("app.main.db.get_database", MagicMock(return_value=MagicMock())), \
+         patch("app.main.MigrationRunner") as mock_runner_cls:
 
+        mock_runner_cls.return_value.migrate = AsyncMock()
+
+        app = create_application()
+        app.dependency_overrides[get_document_service] = lambda: mock_service
+
+        with TestClient(app) as test_client:
+            yield test_client
 
 # --- POST /upload ---
 
