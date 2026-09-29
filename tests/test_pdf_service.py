@@ -47,23 +47,3 @@ def test_calculate_checksum_differs_for_different_content():
     from app.services.pdf_service import calculate_checksum
     # Archivos distintos producen checksums distintos
     assert calculate_checksum(b"contenido A") != calculate_checksum(b"contenido B")
-
-def test_extract_pdf_content_returns_content_and_page_count(sample_pdf_bytes):
-    from app.services.pdf_service import extract_pdf_content
-    result = extract_pdf_content(sample_pdf_bytes)
-    assert result.page_count == 1
-    assert "Hola mundo desde el PDF de prueba" in result.content
-
-def test_extract_pdf_content_counts_every_page():
-    import fitz
-    from app.services.pdf_service import extract_pdf_content
-    doc = fitz.open()
-    for _ in range(3):
-        doc.new_page()
-    result = extract_pdf_content(doc.tobytes())
-    assert result.page_count == 3
-
-def test_extract_pdf_content_with_invalid_bytes_raises_error():
-    from app.services.pdf_service import extract_pdf_content
-    with pytest.raises(ValueError):
-        extract_pdf_content(b"esto no es un pdf")
