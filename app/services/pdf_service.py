@@ -4,22 +4,32 @@ Follows Clean Code principles.
 SRP: Only handles PDF text extraction.
 """
 
-import fitz  # PyMuPDF
 import hashlib
+from dataclasses import dataclass
+
+import fitz  # PyMuPDF
 
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-def extract_text_from_bytes(pdf_bytes: bytes) -> str:
-    """Extract text from PDF bytes.
+@dataclass(frozen=True)
+class PdfExtraction:
+    """Result of extracting a PDF: its full text and number of pages."""
+
+    content: str
+    page_count: int
+
+
+def extract_pdf_content(pdf_bytes: bytes) -> PdfExtraction:
+    """Extract text and page count from PDF bytes, entirely in memory.
 
     Args:
         pdf_bytes: PDF content as bytes.
 
     Returns:
-        Extracted text.
+        The extracted text and the number of pages.
 
     Raises:
         ValueError: If bytes are not a valid PDF.
@@ -35,27 +45,41 @@ def extract_text_from_bytes(pdf_bytes: bytes) -> str:
         )
         raise ValueError("Invalid PDF bytes provided") from e
 
-    text_parts = []
-    for page_num, page in enumerate(doc, 1):
-        page_text = page.get_text()
-        text_parts.append(page_text)
-        logger.debug(
-            "Extracted text from page",
-            extra={"page": page_num, "text_length": len(page_text)},
-        )
+    with doc:
+        text_parts = []
+        for page_num, page in enumerate(doc, 1):
+            page_text = page.get_text()
+            text_parts.append(page_text)
+            logger.debug(
+                "Extracted text from page",
+                extra={"page": page_num, "text_length": len(page_text)},
+            )
 
-    doc.close()
-
-    full_text = "".join(text_parts)
+    extraction = PdfExtraction(content="".join(text_parts), page_count=len(text_parts))
     logger.info(
         "PDF text extraction completed",
         extra={
-            "pages": len(text_parts),
-            "total_length": len(full_text),
+            "pages": extraction.page_count,
+            "total_length": len(extraction.content),
         },
     )
 
-    return full_text
+    return extraction
+
+
+def extract_text_from_bytes(pdf_bytes: bytes) -> str:
+    """Extract text from PDF bytes.
+
+    Args:
+        pdf_bytes: PDF content as bytes.
+
+    Returns:
+        Extracted text.
+
+    Raises:
+        ValueError: If bytes are not a valid PDF.
+    """
+    return extract_pdf_content(pdf_bytes).content
 
 
 def calculate_checksum(file_bytes: bytes) -> str:
