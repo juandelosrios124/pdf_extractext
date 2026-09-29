@@ -29,7 +29,7 @@ def extract_pdf_content(pdf_bytes: bytes) -> PdfExtraction:
     try:
         doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     except pymupdf.FileDataError as e:
-        logger.warning("Invalid PDF bytes", extra={"pdf_size": len(pdf_bytes)})
+        logger.warning("Invalid PDF bytes: size=%d", len(pdf_bytes))
         raise ValueError("Invalid PDF bytes provided") from e
 
     with doc:
@@ -39,7 +39,8 @@ def extract_pdf_content(pdf_bytes: bytes) -> PdfExtraction:
         )
 
     logger.info(
-        "PDF text extraction completed",
-        extra={"pages": extraction.page_count, "total_length": len(extraction.content)},
+        "PDF text extraction completed: pages=%d chars=%d",
+        extraction.page_count,
+        len(extraction.content),
     )
     return extraction
