@@ -1,6 +1,6 @@
 """Tests for the PDF extraction use case."""
 
-import fitz
+import pymupdf
 import pytest
 
 from extractor.services.pdf_extraction import extract_pdf_content
@@ -14,7 +14,7 @@ def test_extract_pdf_content_returns_content_and_page_count(sample_pdf_bytes):
 
 
 def test_extract_pdf_content_counts_every_page():
-    doc = fitz.open()
+    doc = pymupdf.open()
     for _ in range(3):
         doc.new_page()
 
@@ -31,7 +31,7 @@ def test_extract_pdf_content_does_not_mask_unexpected_errors(monkeypatch):
     def broken_open(*args, **kwargs):
         raise RuntimeError("fallo interno")
 
-    monkeypatch.setattr("extractor.services.pdf_extraction.fitz.open", broken_open)
+    monkeypatch.setattr("extractor.services.pdf_extraction.pymupdf.open", broken_open)
 
     with pytest.raises(RuntimeError, match="fallo interno"):
         extract_pdf_content(b"%PDF-1.4")

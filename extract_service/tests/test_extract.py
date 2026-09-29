@@ -9,7 +9,7 @@ import threading
 from io import BytesIO
 from unittest.mock import patch
 
-import fitz
+import pymupdf
 import pytest
 from fastapi.testclient import TestClient
 
@@ -22,7 +22,7 @@ EXTRACT_URL = "/extract"
 
 @pytest.fixture
 def two_page_pdf_bytes() -> bytes:
-    doc = fitz.open()
+    doc = pymupdf.open()
     for text in ("Primera pagina", "Segunda pagina"):
         doc.new_page().insert_text((72, 72), text)
     return doc.tobytes()

@@ -7,7 +7,7 @@ Knows nothing about HTTP.
 import logging
 from dataclasses import dataclass
 
-import fitz  # PyMuPDF
+import pymupdf
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +27,8 @@ def extract_pdf_content(pdf_bytes: bytes) -> PdfExtraction:
         ValueError: If bytes are not a valid PDF.
     """
     try:
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    except fitz.FileDataError as e:
+        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    except pymupdf.FileDataError as e:
         logger.warning("Invalid PDF bytes", extra={"pdf_size": len(pdf_bytes)})
         raise ValueError("Invalid PDF bytes provided") from e
 

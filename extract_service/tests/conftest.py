@@ -19,8 +19,8 @@ def client(settings):
 @pytest.fixture
 def sample_pdf_bytes() -> bytes:
     """Genera un PDF mínimo en memoria para los tests."""
-    import fitz
+    import pymupdf
 
-    doc = fitz.open()
+    doc = pymupdf.open()
     doc.new_page().insert_text((100, 100), "Hola mundo desde el PDF de prueba")
     return doc.tobytes()
