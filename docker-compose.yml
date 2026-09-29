@@ -17,15 +17,22 @@ services:
       start_period: 40s
       retries: 3
 
+  # Sin "ports": con varias réplicas no pueden publicar el mismo puerto del host.
   extract:
     build: ./extract_service
-    ports:
-      - "8001:8001"
+    expose:
+      - "8001"
     environment:
       PORT: 8001
-      MAX_UPLOAD_SIZE: 52428800
-      THREAD_POOL_SIZE: 4
-      LOG_LEVEL: INFO
+      MAX_UPLOAD_SIZE: ${EXTRACT_MAX_UPLOAD_SIZE:-52428800}
+      THREAD_POOL_SIZE: ${EXTRACT_THREAD_POOL_SIZE:-4}
+      LOG_LEVEL: ${EXTRACT_LOG_LEVEL:-INFO}
+    deploy:
+      replicas: ${EXTRACT_REPLICAS:-5}
+      resources:
+        limits:
+          cpus: "${EXTRACT_CPUS:-1.0}"
+          memory: ${EXTRACT_MEMORY:-1g}
 
   mongodb:
     image: mongo:7.0
