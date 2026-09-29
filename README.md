@@ -93,6 +93,10 @@ app-1      | INFO: Uvicorn running on http://0.0.0.0:8000
 http://localhost:8000/api/docs
 ```
 
+El mismo comando levanta `extract_service` con 5 réplicas detrás de un reverse proxy
+(Caddy) en `http://localhost:8001`. Réplicas, límites de CPU/RAM y timeouts del proxy
+se configuran en `.env`; ver [proxy/README.md](proxy/README.md).
+
 ---
 
 ## 💻 Ejecución local (sin Docker)

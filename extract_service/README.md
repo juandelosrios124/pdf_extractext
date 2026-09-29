@@ -27,7 +27,9 @@ uv run pytest
 uv run --env-file .env python -m extractor   # después de: cp .env.example .env
 ```
 
-Con Docker, desde la raíz del repo: `docker compose up extract`.
+Con Docker, desde la raíz del repo: `docker compose up --build extract proxy`. Levanta
+las réplicas del servicio detrás del reverse proxy, que atiende en `http://localhost:8001`
+(ver [proxy/README.md](../proxy/README.md)).
 
 ## Estructura
 
