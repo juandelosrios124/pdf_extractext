@@ -7,6 +7,8 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from mongomock_motor import AsyncMongoMockClient
+
 os.environ["DEBUG"] = "true"
 
 from migrations.config import MigrationConfig
@@ -247,6 +249,36 @@ class TestMigrationFunctions:
         db.users.drop_index.assert_any_call("idx_users_username_unique")
         db.roles.drop_index.assert_any_call("idx_roles_name_unique")
         db.roles.delete_many.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_all_migrations_apply_and_create_expected_indexes(self):
+        """Todas las migraciones corren sobre una base en memoria y dejan los índices clave."""
+        db = AsyncMongoMockClient()["migrations_unit_test"]
+        runner = MigrationRunner(db=db)
+
+        await runner.migrate()
+
+        status = await runner.status()
+        assert status["total_migrations"] > 0
+        assert status["pending_count"] == 0
+        assert status["applied_count"] == status["total_migrations"]
+
+        async def index_keys(collection_name):
+            indexes = await db[collection_name].index_information()
+            return {
+                tuple(index["key"]): index.get("unique", False)
+                for index in indexes.values()
+            }
+
+        documents = await index_keys("documents")
+        assert documents.get((("checksum", 1),)) is True
+        assert (("created_at", -1),) in documents
+        assert (("filename", 1),) in documents
+
+        users = await index_keys("users")
+        assert users.get((("email", 1),)) is True
+        assert users.get((("username", 1),)) is True
+        assert (("created_at", -1),) in users
 
 
 class TestCLI:

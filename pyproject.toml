@@ -42,8 +42,8 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "integration: tests que requieren servicios externos como MongoDB",
 ]
-# ✅ Excluir integration tests del suite general
-addopts = "--ignore=tests/integration/db"
+# Los tests "integration" requieren MongoDB real: se corren con `-m integration`
+addopts = "--strict-markers -m 'not integration'"
 
 
 [tool.uv]

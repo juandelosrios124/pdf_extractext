@@ -213,23 +213,36 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 
 ## 🧪 Ejecutar tests
 
-### Unit tests
+Los tests que necesitan infraestructura real llevan el marker `integration` y quedan
+excluidos por defecto (`addopts` en `pyproject.toml`).
 
-No requieren MongoDB ni ningún servicio externo:
-
-```bash
-pytest tests/ -v --ignore=tests/integration/db
-```
-
-Resultado esperado: **99 passed**
+| Suite | Comando | Requiere |
+|-------|---------|----------|
+| Unitaria (por defecto) | `uv run pytest` | Nada externo |
+| Integración | `uv run pytest -m integration` | MongoDB accesible en `MONGODB_URL` |
+| Completa | `uv run pytest -m ""` | MongoDB accesible en `MONGODB_URL` |
 
 ### Integration tests
 
-Requieren MongoDB corriendo:
+El `.env` apunta a `mongodb`, el nombre del servicio dentro de Docker; desde tu máquina
+hay que usar `localhost`:
 
 ```bash
-pytest tests/integration/db/ -v
+# Levantar solo MongoDB
+docker compose up -d mongodb
+
+# Linux / Mac
+MONGODB_URL=mongodb://localhost:27017 uv run pytest -m integration
+
+# Windows (PowerShell)
+$env:MONGODB_URL="mongodb://localhost:27017"; uv run pytest -m integration
 ```
+
+- Si MongoDB no responde en 2 segundos, los tests fallan con un mensaje que explica cómo levantarlo.
+- Cada test trabaja sobre una base descartable (`pdf_extract_it_<uuid>`) con las migraciones
+  aplicadas, que se elimina al terminar. La base de desarrollo (`MONGODB_DB_NAME`) no se modifica.
+- Un `-m` en la línea de comandos reemplaza al de `addopts`. Para filtrar por otra expresión sin
+  incluir los de integración, agregala explícitamente: `-m "not integration and <expresión>"`.
 
 ---
 
