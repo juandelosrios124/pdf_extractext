@@ -1,4 +1,8 @@
 __pycache__/
 *.pyc
-.env
 .venv/
+
+# Variables de entorno: nunca versionar secretos, solo las plantillas
+.env
+.env.*
+!.env.example

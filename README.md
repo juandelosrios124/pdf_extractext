@@ -48,6 +48,19 @@ copy .env.example .env
 cp .env.example .env
 ```
 
+Generá una `SECRET_KEY` propia y reemplazá el placeholder en tu `.env`:
+
+```bash
+# Linux / Mac (o Git Bash en Windows)
+openssl rand -hex 32
+
+# Cualquier sistema con Python
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+> El archivo `.env` es local y nunca se commitea (está en `.gitignore`). Cada integrante
+> genera su propia clave; no la compartas ni la copies en `.env.example`.
+
 Editá el archivo `.env` con tus valores:
 
 ```ini
@@ -62,7 +75,7 @@ MONGODB_URL=mongodb://mongodb:27017
 MONGODB_DB_NAME=pdf_extract_db
 
 # Auth
-SECRET_KEY=tu-clave-secreta-aqui
+SECRET_KEY=pegá-acá-la-clave-generada
 
 # Logging
 LOG_LEVEL=INFO
@@ -112,12 +125,18 @@ uv sync
 ### 2. Configurar variables de entorno
 
 ```bash
+# Windows
 copy .env.example .env
+
+# Linux / Mac
+cp .env.example .env
 ```
 
-Cambiá `MONGODB_URL` en el `.env`:
+Generá tu `SECRET_KEY` como se indica en [Configurar variables de entorno](#2-configurar-variables-de-entorno)
+y cambiá `MONGODB_URL` en el `.env`:
 
 ```ini
+SECRET_KEY=pegá-acá-la-clave-generada
 MONGODB_URL=mongodb://localhost:27017
 DEBUG=True
 ```
@@ -194,23 +213,36 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 
 ## 🧪 Ejecutar tests
 
-### Unit tests
+Los tests que necesitan infraestructura real llevan el marker `integration` y quedan
+excluidos por defecto (`addopts` en `pyproject.toml`).
 
-No requieren MongoDB ni ningún servicio externo:
-
-```bash
-pytest tests/ -v --ignore=tests/integration/db
-```
-
-Resultado esperado: **99 passed**
+| Suite | Comando | Requiere |
+|-------|---------|----------|
+| Unitaria (por defecto) | `uv run pytest` | Nada externo |
+| Integración | `uv run pytest -m integration` | MongoDB accesible en `MONGODB_URL` |
+| Completa | `uv run pytest -m ""` | MongoDB accesible en `MONGODB_URL` |
 
 ### Integration tests
 
-Requieren MongoDB corriendo:
+El `.env` apunta a `mongodb`, el nombre del servicio dentro de Docker; desde tu máquina
+hay que usar `localhost`:
 
 ```bash
-pytest tests/integration/db/ -v
+# Levantar solo MongoDB
+docker compose up -d mongodb
+
+# Linux / Mac
+MONGODB_URL=mongodb://localhost:27017 uv run pytest -m integration
+
+# Windows (PowerShell)
+$env:MONGODB_URL="mongodb://localhost:27017"; uv run pytest -m integration
 ```
+
+- Si MongoDB no responde en 2 segundos, los tests fallan con un mensaje que explica cómo levantarlo.
+- Cada test trabaja sobre una base descartable (`pdf_extract_it_<uuid>`) con las migraciones
+  aplicadas, que se elimina al terminar. La base de desarrollo (`MONGODB_DB_NAME`) no se modifica.
+- Un `-m` en la línea de comandos reemplaza al de `addopts`. Para filtrar por otra expresión sin
+  incluir los de integración, agregala explícitamente: `-m "not integration and <expresión>"`.
 
 ---
 
@@ -320,7 +352,7 @@ pdf_extractext/
 | `ENVIRONMENT` | Entorno (`development`, `production`) | `development` |
 | `MONGODB_URL` | URL de conexión MongoDB | `mongodb://localhost:27017` |
 | `MONGODB_DB_NAME` | Nombre de la base de datos | `pdf_extract_db` |
-| `SECRET_KEY` | Clave para firmar tokens JWT | — |
+| `SECRET_KEY` | Clave para firmar tokens JWT. Generala con `openssl rand -hex 32` | `change-me-in-production` (inseguro: definila siempre en `.env`) |
 | `LOG_LEVEL` | Nivel de logging (`DEBUG`, `INFO`, `ERROR`) | `INFO` |
 | `MAX_UPLOAD_SIZE` | Tamaño máximo de PDF en bytes | `52428800` (50MB) |
 

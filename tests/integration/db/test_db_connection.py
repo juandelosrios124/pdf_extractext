@@ -9,7 +9,7 @@ from app.db.database import db
 async def test_db_connection():
     """
     Integration test — requiere MongoDB corriendo.
-    Correr con: pytest tests/integration/db/ -v -m integration
+    Correr con: uv run pytest -m integration (ver README, "Ejecutar tests")
     """
     await db.connect()
     try:
